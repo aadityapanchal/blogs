@@ -292,11 +292,7 @@
     tbody td:first-child { font-family: 'Fraunces', serif; font-weight: 600; color: var(--ink); }
 
     /* References */
-    .refs { margin-top: 1.4rem; display: grid; gap: 0.7rem; }
-    .ref-group-label {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--muted-solid); margin: 1.6rem 0 0.2rem;
-    }
+    .refs { margin-top: 1.8rem; display: grid; gap: 0.7rem; }
     .ref {
       background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
       padding: 1rem 1.2rem; display: grid; grid-template-columns: auto 1fr; gap: 0.2rem 1rem;
@@ -390,7 +386,7 @@
       <div class="hero-meta">
         <span>~8 min read</span>
         <span>By <a href="https://www.linkedin.com/in/aadityapanchal" target="_blank" rel="noopener">Aditya Panchal</a></span>
-        <span>5 sources</span>
+        <span>3 sources</span>
       </div>
     </div>
   </header>
@@ -594,7 +590,7 @@
           </article>
           <article class="move reveal">
             <h4>Verify tools deterministically, judge only the rest</h4>
-            <p>Anything checkable should be checked by code, not vibes. Confirm a tool ran, with what arguments, and inspect the end state (tau-bench checks the final database state against a goal). Reserve the LLM judge for genuinely open-ended quality.</p>
+            <p>Anything checkable should be checked by code, not vibes. Confirm a tool actually ran, with what arguments, and inspect the end state (did the record really get written?). Reserve the LLM judge for genuinely open-ended quality.</p>
             <span class="targets">Cancels: unverified tool use, outcome-only blindness</span>
           </article>
           <article class="move reveal">
@@ -707,20 +703,12 @@
     <section id="sources" class="divider-soft">
       <div class="wrap">
         <div class="label reveal">Sources</div>
-        <h2 class="sec reveal">Where this comes from</h2>
-        <p class="lead prose reveal">Three works on judge bias and two on evaluating agents. Every claim above traces back to one of these.</p>
-
-        <p class="ref-group-label reveal">On judge bias</p>
+        <h2 class="sec reveal">Read these three</h2>
+        <p class="lead prose reveal">Two works pin down how LLM judges are biased, and one maps how agents get evaluated. Every claim above traces back to these.</p>
         <div class="refs">
           <div class="ref reveal"><span class="yr">2023</span><span class="t">Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena</span><span class="d">Zheng et al. The study behind the agreement number, and the first to name position, verbosity, and self-enhancement bias.</span><a href="https://arxiv.org/abs/2306.05685" target="_blank" rel="noopener">arxiv.org/abs/2306.05685</a></div>
           <div class="ref reveal"><span class="yr">2025</span><span class="t">Justice or Prejudice? Quantifying Biases in LLM-as-a-Judge</span><span class="d">Ye et al. (ICLR). The CALM framework, which formalizes a dozen distinct judge biases and how to provoke them.</span><a href="https://arxiv.org/abs/2410.02736" target="_blank" rel="noopener">arxiv.org/abs/2410.02736</a></div>
-          <div class="ref reveal"><span class="yr">2024</span><span class="t">A Survey on LLM-as-a-Judge</span><span class="d">A broad map of judging methods, bias types, and the mitigation strategies behind "The Defense."</span><a href="https://arxiv.org/abs/2411.15594" target="_blank" rel="noopener">arxiv.org/abs/2411.15594</a></div>
-        </div>
-
-        <p class="ref-group-label reveal">On evaluating agents</p>
-        <div class="refs">
-          <div class="ref reveal"><span class="yr">2025</span><span class="t">A Survey on Evaluation of LLM-based Agents</span><span class="d">Covers trajectory-based assessment, and the split between reference-based checks and reference-free LLM-judge scoring of a run.</span><a href="https://arxiv.org/abs/2503.16416" target="_blank" rel="noopener">arxiv.org/abs/2503.16416</a></div>
-          <div class="ref reveal"><span class="yr">2024</span><span class="t">tau-bench: A Benchmark for Tool-Agent-User Interaction</span><span class="d">Yao et al. Verifies success by checking the final database state against a goal, and shows even strong agents are inconsistent across repeated trials.</span><a href="https://arxiv.org/abs/2406.12045" target="_blank" rel="noopener">arxiv.org/abs/2406.12045</a></div>
+          <div class="ref reveal"><span class="yr">2025</span><span class="t">A Survey on Evaluation of LLM-based Agents</span><span class="d">Maps how agents get scored, including trajectory-based assessment and the split between reference-based checks and reference-free LLM-judge scoring of a run.</span><a href="https://arxiv.org/abs/2503.16416" target="_blank" rel="noopener">arxiv.org/abs/2503.16416</a></div>
         </div>
       </div>
     </section>
