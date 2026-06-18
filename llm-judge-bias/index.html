@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Judging the Agent: LLM-as-a-Judge Bias in Agentic Systems</title>
+  <meta name="description" content="Agentic systems get graded by LLM judges. Those judges are biased, the agent setting makes it worse, and the score often becomes a training reward. Here is what goes wrong and how to fix it.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f5efe3;
+      --bg-alt: #ece2d1;
+      --surface: #fffdf8;
+      --surface-2: #f3ebdd;
+      --ink: #221b16;
+      --ink-soft: #4d4339;
+      --muted-solid: #8a7c6b;
+      --line: rgba(70, 45, 30, 0.14);
+      --primary: #6e2433;
+      --primary-2: #8b3144;
+      --gold: #9c6f12;
+      --gold-bright: #c69a2b;
+      --shadow-sm: 0 2px 10px rgba(70, 30, 35, 0.06);
+      --shadow: 0 14px 44px rgba(70, 30, 35, 0.10);
+      --radius: 16px;
+      --maxw: 1080px;
+      --prose: 70ch;
+    }
+
+    html[data-theme="dark"] {
+      --bg: #16110e;
+      --bg-alt: #1d1714;
+      --surface: #221b16;
+      --surface-2: #2a221c;
+      --ink: #f4ece1;
+      --ink-soft: #d9cdbd;
+      --muted-solid: #a99a87;
+      --line: rgba(235, 215, 190, 0.13);
+      --primary: #e9b1bc;
+      --primary-2: #f0c2cb;
+      --gold: #e6c45c;
+      --gold-bright: #f0d278;
+      --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.3);
+      --shadow: 0 14px 44px rgba(0, 0, 0, 0.45);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Newsreader', Georgia, serif;
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 19px;
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.4s ease, color 0.4s ease;
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3, h4, .display {
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      line-height: 1.12;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 0.82em;
+      letter-spacing: 0.01em;
+    }
+
+    a { color: var(--primary-2); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    a:hover { color: var(--gold); }
+
+    .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 1.5rem; }
+    .prose { max-width: var(--prose); }
+
+    /* Reading progress */
+    .progress {
+      position: fixed; top: 0; left: 0; height: 3px; width: 0%;
+      background: linear-gradient(90deg, var(--gold), var(--primary-2));
+      z-index: 200; transition: width 0.1s linear;
+    }
+
+    /* Nav */
+    nav {
+      position: sticky; top: 0; z-index: 150;
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(14px) saturate(1.2);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav-inner {
+      max-width: var(--maxw); margin: 0 auto; padding: 0.7rem 1.5rem;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .brand {
+      font-family: 'Fraunces', serif; font-weight: 600; font-size: 1.02rem;
+      color: var(--ink); text-decoration: none; letter-spacing: -0.01em;
+      display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;
+    }
+    .brand .gavel { color: var(--primary-2); }
+    .nav-links { display: flex; gap: 1.2rem; margin-left: auto; align-items: center; }
+    .nav-links a {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--muted-solid); text-decoration: none; transition: color 0.2s;
+    }
+    .nav-links a:hover, .nav-links a.active { color: var(--primary-2); }
+    @media (max-width: 760px) { .nav-links a:not(.theme-only) { display: none; } }
+
+    .theme-btn {
+      background: var(--surface-2); border: 1px solid var(--line);
+      width: 38px; height: 38px; border-radius: 50%; cursor: pointer;
+      display: grid; place-items: center; color: var(--ink); transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .theme-btn:hover { border-color: var(--gold); color: var(--gold); transform: rotate(-12deg); }
+    .theme-btn svg { width: 18px; height: 18px; }
+    html[data-theme="light"] .moon { display: none; }
+    html[data-theme="dark"] .sun { display: none; }
+
+    /* Hero */
+    .hero {
+      position: relative; overflow: hidden;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 110%, color-mix(in srgb, var(--gold) 22%, transparent), transparent 70%),
+        linear-gradient(160deg, #2c0f17 0%, #561e2c 55%, #6e2433 100%);
+      color: #f6efe6;
+      padding: clamp(3rem, 8vw, 6rem) 1.5rem clamp(3.5rem, 9vw, 6.5rem);
+      text-align: center;
+    }
+    .hero::after {
+      content: ""; position: absolute; inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 4px 4px; pointer-events: none; opacity: 0.5;
+    }
+    .hero-inner { position: relative; max-width: 760px; margin: 0 auto; }
+    .scales { width: 150px; height: 116px; margin: 0 auto 1.8rem; }
+    .scales svg { width: 100%; height: 100%; overflow: visible; }
+    @keyframes sway { 0%, 100% { transform: rotate(7deg); } 50% { transform: rotate(-7deg); } }
+    @keyframes dipL { 0%, 100% { transform: translateY(7px); } 50% { transform: translateY(-7px); } }
+    @keyframes dipR { 0%, 100% { transform: translateY(-7px); } 50% { transform: translateY(7px); } }
+    .beam { transform-origin: 75px 26px; animation: sway 6s ease-in-out infinite; }
+    .panL { animation: dipL 6s ease-in-out infinite; }
+    .panR { animation: dipR 6s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) {
+      .beam, .panL, .panR { animation: none; }
+    }
+    .kicker {
+      display: inline-block; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--gold-bright); border: 1px solid rgba(230, 196, 92, 0.4);
+      padding: 0.35rem 0.9rem; border-radius: 999px; margin-bottom: 1.5rem;
+    }
+    .hero h1 {
+      color: #fbf6ee; font-weight: 600;
+      font-size: clamp(2.2rem, 6.5vw, 4rem); margin-bottom: 1.1rem;
+    }
+    .hero h1 .em { font-style: italic; color: var(--gold-bright); }
+    .hero-sub {
+      font-size: clamp(1.05rem, 2.4vw, 1.32rem); line-height: 1.6;
+      color: rgba(246, 239, 230, 0.82); max-width: 620px; margin: 0 auto 2rem;
+    }
+    .hero-meta {
+      display: flex; gap: 1.2rem; justify-content: center; flex-wrap: wrap;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.74rem;
+      color: rgba(246, 239, 230, 0.6); letter-spacing: 0.04em;
+    }
+    .hero-meta a { color: var(--gold-bright); text-decoration: none; }
+    .hero-meta a:hover { text-decoration: underline; }
+
+    /* Sections */
+    section { padding: clamp(3rem, 7vw, 5.5rem) 0; }
+    .label {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+      letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold);
+      display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1rem;
+    }
+    .label::before { content: ""; width: 26px; height: 2px; background: var(--gold); display: inline-block; }
+    h2.sec {
+      font-size: clamp(1.8rem, 4.2vw, 2.7rem); margin-bottom: 1.2rem; color: var(--ink);
+      max-width: 22ch;
+    }
+    .lead { font-size: 1.18rem; color: var(--ink-soft); margin-bottom: 1.2rem; }
+    .prose p { margin-bottom: 1.15rem; color: var(--ink-soft); }
+    .prose p strong { color: var(--ink); font-weight: 600; }
+
+    .divider-soft { border-top: 1px solid var(--line); }
+
+    /* Pull quote */
+    .pull {
+      font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+      font-size: clamp(1.4rem, 3.5vw, 2rem); line-height: 1.35; color: var(--primary);
+      border-left: 3px solid var(--gold); padding: 0.4rem 0 0.4rem 1.6rem;
+      margin: 2.2rem 0; max-width: 30ch;
+    }
+
+    /* Callout */
+    .callout {
+      background: var(--surface); border: 1px solid var(--line);
+      border-left: 4px solid var(--gold); border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 1.3rem 1.6rem; margin: 1.8rem 0; box-shadow: var(--shadow-sm);
+      font-size: 1rem; color: var(--ink-soft);
+    }
+    .callout b { color: var(--primary); }
+
+    /* Figures: fixed light "exhibit" card so diagrams stay legible in both themes */
+    .figure {
+      background: #faf6ee; border: 1px solid rgba(70, 45, 30, 0.16);
+      border-radius: var(--radius); box-shadow: var(--shadow);
+      padding: 2rem 1.5rem 1.4rem; margin: 2.2rem 0;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+    }
+    .figure svg { display: block; margin: 0 auto; width: 100%; max-width: 720px; height: auto; }
+    .figcap {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #6b5d4d;
+      text-align: center; margin-top: 1.1rem; letter-spacing: 0.03em;
+    }
+
+    /* Bias groups */
+    .group { margin-top: 2.6rem; }
+    .group-head { display: flex; align-items: baseline; gap: 0.9rem; margin-bottom: 0.4rem; flex-wrap: wrap; }
+    .group-num {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--gold);
+      border: 1px solid var(--line); border-radius: 6px; padding: 0.1rem 0.5rem;
+    }
+    .group-head h3 { font-size: 1.5rem; color: var(--primary); }
+    .group-sub { color: var(--muted-solid); font-size: 1.02rem; margin-bottom: 1.3rem; font-style: italic; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 1.1rem; }
+    .card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 1.4rem 1.45rem; box-shadow: var(--shadow-sm);
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+      position: relative;
+    }
+    .card:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--gold) 45%, var(--line)); }
+    .card h4 { font-size: 1.18rem; margin-bottom: 0.5rem; color: var(--ink); }
+    .card .tell { font-size: 0.98rem; color: var(--ink-soft); margin-bottom: 0.7rem; }
+    .card .eg {
+      font-size: 0.9rem; color: var(--muted-solid); font-style: italic;
+      border-left: 2px solid var(--line); padding-left: 0.75rem; margin-bottom: 0.85rem;
+    }
+    .fixtag {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; letter-spacing: 0.03em;
+      background: var(--surface-2); color: var(--primary); border-radius: 6px;
+      padding: 0.3rem 0.6rem; border: 1px solid var(--line);
+    }
+    .fixtag b { color: var(--gold); font-weight: 600; }
+
+    /* Defense list */
+    .moves { counter-reset: m; margin-top: 1.8rem; display: grid; gap: 1rem; }
+    .move {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 1.4rem 1.5rem 1.4rem 4.2rem; position: relative; box-shadow: var(--shadow-sm);
+      transition: border-color 0.2s;
+    }
+    .move:hover { border-color: color-mix(in srgb, var(--gold) 40%, var(--line)); }
+    .move::before {
+      counter-increment: m; content: counter(m, decimal-leading-zero);
+      position: absolute; left: 1.3rem; top: 1.35rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; font-weight: 600;
+      color: var(--gold);
+    }
+    .move h4 { font-size: 1.16rem; margin-bottom: 0.35rem; }
+    .move p { font-size: 0.99rem; color: var(--ink-soft); margin: 0; }
+    .move .targets {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; letter-spacing: 0.04em;
+      color: var(--muted-solid); text-transform: uppercase; margin-top: 0.6rem; display: block;
+    }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; margin-top: 1.8rem; border-radius: var(--radius); box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.95rem; min-width: 0; }
+    thead th {
+      background: var(--primary); color: #fbf3ec; text-align: left; padding: 0.9rem 1.1rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em;
+      font-weight: 500;
+    }
+    html[data-theme="dark"] thead th { color: #2a1116; }
+    tbody td { padding: 0.85rem 1.1rem; border-bottom: 1px solid var(--line); color: var(--ink-soft); vertical-align: top; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+    tbody td:first-child { font-family: 'Fraunces', serif; font-weight: 600; color: var(--ink); }
+
+    /* References */
+    .refs { margin-top: 1.4rem; display: grid; gap: 0.7rem; }
+    .ref-group-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--muted-solid); margin: 1.6rem 0 0.2rem;
+    }
+    .ref {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+      padding: 1rem 1.2rem; display: grid; grid-template-columns: auto 1fr; gap: 0.2rem 1rem;
+      align-items: baseline; transition: border-color 0.2s;
+    }
+    .ref:hover { border-color: color-mix(in srgb, var(--gold) 40%, var(--line)); }
+    .ref .yr { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--gold); grid-row: span 2; padding-top: 0.2rem; }
+    .ref .t { font-family: 'Fraunces', serif; font-weight: 600; color: var(--ink); font-size: 1.04rem; }
+    .ref .d { font-size: 0.92rem; color: var(--muted-solid); grid-column: 2; }
+    .ref a { font-size: 0.82rem; font-family: 'JetBrains Mono', monospace; grid-column: 2; }
+
+    /* Footer */
+    footer {
+      background: linear-gradient(160deg, #2c0f17, #561e2c); color: rgba(246, 239, 230, 0.72);
+      padding: 3rem 1.5rem; text-align: center; margin-top: 2rem;
+    }
+    footer .f-quote { font-family: 'Fraunces', serif; font-style: italic; font-size: 1.25rem; color: #fbf3ec; max-width: 32ch; margin: 0 auto 1.4rem; line-height: 1.4; }
+    footer a { color: var(--gold-bright); }
+    footer .f-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; letter-spacing: 0.04em; }
+    footer .f-fine { font-size: 0.72rem; opacity: 0.55; margin-top: 1rem; font-family: 'JetBrains Mono', monospace; }
+
+    /* Reveal animation (JS-gated) */
+    .has-js .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.7s ease, transform 0.7s ease; }
+    .has-js .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      .has-js .reveal { opacity: 1; transform: none; transition: none; }
+    }
+
+    /* Mobile */
+    @media (max-width: 680px) {
+      body { font-size: 18px; }
+      .wrap { padding: 0 1.15rem; }
+      .nav-inner { padding: 0.6rem 1.15rem; }
+      .pull { margin: 1.8rem 0; padding-left: 1.1rem; }
+      .move { padding: 1.2rem 1.2rem 1.2rem 3.4rem; }
+      .move::before { left: 1.1rem; top: 1.2rem; }
+      .figure { padding: 1.3rem 0.9rem 1rem; }
+      .figure svg { width: 620px; max-width: none; }
+      .figcap::after { content: " (scroll to see all)"; opacity: 0.7; }
+    }
+    @media (max-width: 380px) {
+      .figure svg { width: 560px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="#top" class="brand"><span class="gavel">&#167;</span> The Biased Judge</a>
+      <div class="nav-links">
+        <a href="../">All posts</a>
+        <a href="#premise">Premise</a>
+        <a href="#pipeline">Pipeline</a>
+        <a href="#charges">The Charges</a>
+        <a href="#defense">The Defense</a>
+        <a href="#cheatsheet">Cheat Sheet</a>
+        <a href="#sources">Sources</a>
+        <button class="theme-btn theme-only" id="themeBtn" aria-label="Toggle dark mode" title="Toggle theme">
+          <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>
+          <svg class="moon" viewBox="0 0 24 24" fill="currentColor"><path d="M20 14.5A8 8 0 0 1 9.5 4a0.6 0.6 0 0 0-0.8-0.8A9 9 0 1 0 20.8 15.3a0.6 0.6 0 0 0-0.8-0.8z"/></svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero" id="top">
+    <div class="hero-inner">
+      <div class="scales" aria-hidden="true">
+        <svg viewBox="0 0 150 116">
+          <line x1="75" y1="104" x2="75" y2="24" stroke="#c69a2b" stroke-width="2.4"/>
+          <line x1="56" y1="104" x2="94" y2="104" stroke="#c69a2b" stroke-width="2.4" stroke-linecap="round"/>
+          <circle cx="75" cy="24" r="4.5" fill="#e6c45c"/>
+          <g class="beam">
+            <line x1="18" y1="26" x2="132" y2="26" stroke="#e6c45c" stroke-width="2.6" stroke-linecap="round"/>
+            <g class="panL">
+              <line x1="18" y1="26" x2="18" y2="44" stroke="#e6c45c" stroke-width="1.4"/>
+              <path d="M4 44 H32 L26 58 Q18 63 10 58 Z" fill="#c69a2b"/>
+            </g>
+            <g class="panR">
+              <line x1="132" y1="26" x2="132" y2="44" stroke="#e6c45c" stroke-width="1.4"/>
+              <path d="M118 44 H146 L140 58 Q132 63 124 58 Z" fill="#9c6f12"/>
+            </g>
+          </g>
+        </svg>
+      </div>
+      <span class="kicker">Agent Evaluation / Field Guide</span>
+      <h1>An LLM grades your agent. <span class="em">And it can be gamed.</span></h1>
+      <p class="hero-sub">Agentic systems run long, multi-step trajectories that nobody wants to grade by hand, so we point an LLM judge at them. That judge carries every classic bias, picks up a few that only appear once there are tools, steps, and rewards in the loop, and often turns into the very reward your agent is trained to chase.</p>
+      <div class="hero-meta">
+        <span>~8 min read</span>
+        <span>By <a href="https://www.linkedin.com/in/aadityapanchal" target="_blank" rel="noopener">Aditya Panchal</a></span>
+        <span>5 sources</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- PREMISE -->
+    <section id="premise">
+      <div class="wrap">
+        <div class="prose">
+          <div class="label reveal">Opening statement</div>
+          <h2 class="sec reveal">A single answer is easy to grade. A trajectory is not.</h2>
+          <p class="reveal">A chatbot turn is one answer you can skim. An agent run is a whole story: a plan, a sequence of tool calls, the observations that come back, sometimes a few sub-agents arguing among themselves, and finally an answer. Reading thousands of those by hand is a non-starter, so teams do the obvious thing and point an LLM at the transcript to score whether the task succeeded and whether the path made sense.</p>
+          <p class="reveal">It mostly works. The same line of research that made LLM judges popular (the MT-Bench study) found a strong judge agreeing with human reviewers more than 80 percent of the time, about the rate at which two humans agree. Modern agent-eval stacks lean on exactly this: when there is no single gold path, they let an LLM judge rate a trajectory for coherence, efficiency, and goal-directedness.</p>
+          <p class="reveal">Here is the catch, and the agent setting sharpens it. <strong>A trajectory is long, so the judge's attention frays in the middle. Tool calls are hard to verify, so the judge takes the agent's word that the search happened and returned what it claims. And when that judge's score becomes a reward signal, the agent stops optimizing the task and starts optimizing the judge.</strong></p>
+          <blockquote class="pull reveal">An agent trained against a biased judge does not get better at the task. It gets better at being graded.</blockquote>
+          <p class="reveal">The good news is the same as ever: almost every one of these failures has a known counter-move, and several of them are specific to agents (verify tools deterministically, judge the route and not just the destination). This is a field guide to both halves: where the judge gets fooled in an agentic system, and what to do about it.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- PIPELINE -->
+    <section id="pipeline" class="divider-soft">
+      <div class="wrap">
+        <div class="label reveal">How a verdict is made</div>
+        <h2 class="sec reveal">One run in, one number out, and three places it bends</h2>
+        <p class="lead prose reveal">An agent run plus a rubric goes to the judge. A score comes out, and that score becomes an eval metric or, more dangerously, a training reward. Bias can enter at the run, at the read, and at the reward.</p>
+
+        <div class="figure reveal">
+          <svg viewBox="0 0 760 250" role="img" aria-label="Diagram of an agent run being scored by an LLM judge">
+            <defs>
+              <marker id="ar" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#c69a2b"/></marker>
+              <marker id="ard" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8b3144"/></marker>
+            </defs>
+
+            <!-- Column 1: agent run -->
+            <rect x="20" y="34" width="220" height="156" rx="12" fill="none" stroke="#8b3144" stroke-width="1.6"/>
+            <text x="130" y="54" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#8b3144">AGENT RUN</text>
+            <rect x="42" y="64" width="176" height="22" rx="6" fill="#efe7d6"/>
+            <text x="130" y="79" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#5d4f3f">plan</text>
+            <line x1="130" y1="86" x2="130" y2="92" stroke="#b9a98f" stroke-width="1.4"/>
+            <rect x="42" y="92" width="176" height="22" rx="6" fill="#efe7d6"/>
+            <text x="130" y="107" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#5d4f3f">call tool</text>
+            <line x1="130" y1="114" x2="130" y2="120" stroke="#b9a98f" stroke-width="1.4"/>
+            <rect x="42" y="120" width="176" height="22" rx="6" fill="#efe7d6"/>
+            <text x="130" y="135" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#5d4f3f">observe result</text>
+            <line x1="130" y1="142" x2="130" y2="148" stroke="#b9a98f" stroke-width="1.4"/>
+            <rect x="42" y="148" width="176" height="22" rx="6" fill="#f0dcc2"/>
+            <text x="130" y="163" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#7a5a17">final answer</text>
+
+            <path d="M240 112 H296" stroke="#c69a2b" stroke-width="2" marker-end="url(#ar)"/>
+
+            <!-- Column 2: judge -->
+            <rect x="300" y="74" width="160" height="96" rx="12" fill="#6e2433"/>
+            <text x="380" y="104" text-anchor="middle" font-family="Fraunces, serif" font-weight="600" font-size="17" fill="#fbf3ec">The Judge</text>
+            <text x="380" y="126" text-anchor="middle" font-family="Newsreader, serif" font-size="11.5" fill="#e6c45c">reads the whole run</text>
+            <text x="380" y="148" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#dca7b1">order, length, tools, ego</text>
+
+            <path d="M460 122 H512" stroke="#c69a2b" stroke-width="2" marker-end="url(#ar)"/>
+
+            <!-- Column 3: score then reward -->
+            <rect x="514" y="92" width="100" height="60" rx="10" fill="none" stroke="#9c6f12" stroke-width="1.8"/>
+            <text x="564" y="116" text-anchor="middle" font-family="Fraunces, serif" font-weight="600" font-size="14" fill="#9c6f12">Score</text>
+            <text x="564" y="135" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#9c6f12">pass / fail</text>
+            <path d="M614 122 H648" stroke="#8b3144" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#ard)"/>
+            <rect x="650" y="90" width="92" height="64" rx="10" fill="#8b3144"/>
+            <text x="696" y="116" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#fbf3ec">eval metric</text>
+            <text x="696" y="132" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#f0c2cb">or RL reward</text>
+
+            <!-- evenly spaced stage legend -->
+            <g font-family="JetBrains Mono, monospace" font-size="10">
+              <rect x="70" y="210" width="120" height="24" rx="12" fill="#f2ead9" stroke="#d8cbb4" stroke-width="1"/>
+              <text x="130" y="226" text-anchor="middle" fill="#6b5d4d">1. the run</text>
+              <rect x="320" y="210" width="120" height="24" rx="12" fill="#f2ead9" stroke="#d8cbb4" stroke-width="1"/>
+              <text x="380" y="226" text-anchor="middle" fill="#6b5d4d">2. the read</text>
+              <rect x="570" y="210" width="120" height="24" rx="12" fill="#f2ead9" stroke="#d8cbb4" stroke-width="1"/>
+              <text x="630" y="226" text-anchor="middle" fill="#6b5d4d">3. the reward</text>
+            </g>
+          </svg>
+          <div class="figcap">The run can be padded, the read can be fooled, and the reward can be hacked. A score that began as "did it work?" ends up steering training.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHARGES -->
+    <section id="charges" class="divider-soft">
+      <div class="wrap">
+        <div class="label reveal">The charges</div>
+        <h2 class="sec reveal">Twelve ways the bench gets it wrong</h2>
+        <p class="lead prose reveal">The first four are the classic LLM-judge biases, wearing agent clothes. The next eight are where the agent setting bites hardest: long runs, unverifiable tools, and a score that doubles as a reward.</p>
+
+        <!-- Group 1 -->
+        <div class="group reveal">
+          <div class="group-head"><span class="group-num">Group 01</span><h3>The classics, now with tools</h3></div>
+          <p class="group-sub">Old biases that followed us into the agent era.</p>
+          <div class="cards">
+            <article class="card">
+              <h4>Position bias</h4>
+              <p class="tell">When comparing two agent runs, the judge leans toward whichever it reads first, content aside.</p>
+              <p class="eg">Run A versus Run B can flip winners just by swapping which trajectory is pasted in first.</p>
+              <span class="fixtag"><b>Fix:</b> swap and average</span>
+            </article>
+            <article class="card">
+              <h4>Verbosity and step-count bias</h4>
+              <p class="tell">Longer trajectories with more tool calls read as "more thorough," so a padded run beats an efficient one.</p>
+              <p class="eg">An agent that takes 12 wandering steps can outscore the one that nailed it in 3.</p>
+              <span class="fixtag"><b>Fix:</b> normalize length and steps</span>
+            </article>
+            <article class="card">
+              <h4>Style and confidence bias</h4>
+              <p class="tell">A polished, confident final summary wins over a terse correct one. Narration gets graded as competence.</p>
+              <p class="eg">"Task completed successfully!" with headers beats a plain, correct one-liner.</p>
+              <span class="fixtag"><b>Fix:</b> score on a rubric</span>
+            </article>
+            <article class="card">
+              <h4>Self-preference and leakage</h4>
+              <p class="tell">If the judge shares a model family with the agent backbone (it usually does), it favors its own kind of output.</p>
+              <p class="eg">One frontier model powering both the agent and the judge quietly inflates the agent's scores.</p>
+              <span class="fixtag"><b>Fix:</b> different judge family</span>
+            </article>
+          </div>
+        </div>
+
+        <!-- Group 2 -->
+        <div class="group reveal">
+          <div class="group-head"><span class="group-num">Group 02</span><h3>Where the agent setting bites</h3></div>
+          <p class="group-sub">Failures that only exist because there are steps and tools.</p>
+          <div class="cards">
+            <article class="card">
+              <h4>Outcome-only blindness</h4>
+              <p class="tell">The judge checks the final answer and waves the trajectory through, missing broken or illegal intermediate steps.</p>
+              <p class="eg">A correct answer reached by a forbidden action or a lucky guess scores like a clean solve.</p>
+              <span class="fixtag"><b>Fix:</b> judge the route too</span>
+            </article>
+            <article class="card">
+              <h4>Unverified tool use</h4>
+              <p class="tell">The judge cannot see whether a tool truly ran or returned what the agent claims, so it trusts the narration.</p>
+              <p class="eg">An agent that says "I searched and found X" gets credit even if the call failed or never happened.</p>
+              <span class="fixtag"><b>Fix:</b> check tools deterministically</span>
+            </article>
+            <article class="card">
+              <h4>Long-trajectory fade</h4>
+              <p class="tell">Long transcripts strain the judge's attention, so middle steps get skimmed (the lost-in-the-middle effect).</p>
+              <p class="eg">An error buried in step 7 of 15 slips past while the judge focuses on the start and the end.</p>
+              <span class="fixtag"><b>Fix:</b> chunk and judge in parts</span>
+            </article>
+            <article class="card">
+              <h4>Sycophancy to the goal</h4>
+              <p class="tell">Hand the judge the intended outcome and it rubber-stamps any run that claims to have reached it.</p>
+              <p class="eg">Putting the target answer in the judge prompt turns scoring into confirmation.</p>
+              <span class="fixtag"><b>Fix:</b> hide the target</span>
+            </article>
+          </div>
+        </div>
+
+        <!-- Group 3 -->
+        <div class="group reveal">
+          <div class="group-head"><span class="group-num">Group 03</span><h3>When the judge becomes the reward</h3></div>
+          <p class="group-sub">The training-time failures, which are the expensive ones.</p>
+          <div class="cards">
+            <article class="card">
+              <h4>Reward hacking</h4>
+              <p class="tell">Optimize an agent directly against an LLM judge and it learns to please the judge instead of doing the task.</p>
+              <p class="eg">The policy discovers that confident success claims and verbose reasoning reliably earn points.</p>
+              <span class="fixtag"><b>Fix:</b> do not train on one judge</span>
+            </article>
+            <article class="card">
+              <h4>Self-evaluation loops</h4>
+              <p class="tell">When an agent's own critic or reflection step uses the same model, it approves its own plans and inflates confidence.</p>
+              <p class="eg">The actor and the critic are the same model, so the review is mostly a formality.</p>
+              <span class="fixtag"><b>Fix:</b> separate actor and critic</span>
+            </article>
+            <article class="card">
+              <h4>Cascade trust</h4>
+              <p class="tell">In multi-agent systems, one agent's output becomes another's ground truth, so an early biased verdict propagates.</p>
+              <p class="eg">A shaky judgment at step one is treated as fact by every downstream agent.</p>
+              <span class="fixtag"><b>Fix:</b> independent checks</span>
+            </article>
+            <article class="card">
+              <h4>Calibration drift</h4>
+              <p class="tell">Swap the judge model, edit its prompt, or absorb a silent API bump and last month's scores stop being comparable.</p>
+              <p class="eg">Your success rate moves on the dashboard while no agent actually changed.</p>
+              <span class="fixtag"><b>Fix:</b> pin and anchor</span>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DEFENSE -->
+    <section id="defense" class="divider-soft">
+      <div class="wrap">
+        <div class="label reveal">The defense</div>
+        <h2 class="sec reveal">Nine moves that hold up on appeal</h2>
+        <p class="lead prose reveal">You do not need a perfect judge. You need a judge whose blind spots you have measured and worked around. These run from "do it today" to "do it before you trust a number, or worse, train on it."</p>
+
+        <div class="moves">
+          <article class="move reveal">
+            <h4>Judge the route, not just the destination</h4>
+            <p>Score the trajectory step by step (tool choice, argument correctness, ordering, recovery from errors), not only the final answer. Most of the real signal lives in the path, and outcome-only scoring hides where the agent went wrong.</p>
+            <span class="targets">Cancels: outcome-only blindness</span>
+          </article>
+          <article class="move reveal">
+            <h4>Verify tools deterministically, judge only the rest</h4>
+            <p>Anything checkable should be checked by code, not vibes. Confirm a tool ran, with what arguments, and inspect the end state (tau-bench checks the final database state against a goal). Reserve the LLM judge for genuinely open-ended quality.</p>
+            <span class="targets">Cancels: unverified tool use, outcome-only blindness</span>
+          </article>
+          <article class="move reveal">
+            <h4>Use a judge from a different model family</h4>
+            <p>Never let the model powering your agent also grade it. Different lineage for the judge cuts self-preference and preference leakage; a panel from different providers is better still for high-stakes calls.</p>
+            <span class="targets">Cancels: self-preference, preference leakage</span>
+          </article>
+          <article class="move reveal">
+            <h4>Swap, average, and anonymize</h4>
+            <p>For pairwise run comparisons, evaluate both orderings and only count a win that holds both ways. Strip model names and identifying banners from the transcript before it reaches the judge.</p>
+            <span class="targets">Cancels: position, compassion-fade</span>
+          </article>
+          <article class="move reveal">
+            <h4>Normalize for length and step count</h4>
+            <p>Put it in the rubric explicitly: a concise, correct, 3-step run scores at least as well as a verbose 12-step one. Score per dimension on content, so polish and narration cannot win on their own.</p>
+            <span class="targets">Cancels: verbosity, step-count, style, confidence</span>
+          </article>
+          <article class="move reveal">
+            <h4>Keep the target out of the judge prompt</h4>
+            <p>Do not hand the judge the intended answer and ask "did it get here?" A judge that knows the destination will confirm it. Give it the rubric and the run, not the answer key.</p>
+            <span class="targets">Cancels: sycophancy to the goal</span>
+          </article>
+          <article class="move reveal">
+            <h4>Chunk long runs before judging</h4>
+            <p>Break a long trajectory into stages and judge each group, then aggregate, rather than dropping a 15-step transcript into one prompt and hoping the middle gets read. This fights the lost-in-the-middle fade.</p>
+            <span class="targets">Cancels: long-trajectory fade</span>
+          </article>
+          <article class="move reveal">
+            <h4>Do not optimize against a single judge</h4>
+            <p>If a judge becomes a training reward, the agent will hack it. Mix in deterministic, ground-truth reward where possible; hold out a separate judge for evaluation; add human spot-checks and adversarial probes that look for judge-pleasing behavior.</p>
+            <span class="targets">Cancels: reward hacking, self-evaluation loops</span>
+          </article>
+          <article class="move reveal">
+            <h4>Pin the judge, anchor the runs, calibrate against humans</h4>
+            <p>Freeze the judge version and prompt, re-run a fixed set of anchor trajectories every cycle to catch drift, and calibrate against human-labeled runs. Track reliability across repeated trials, not just an average, because an agent that succeeds sometimes is not the same as one you can ship.</p>
+            <span class="targets">Cancels: calibration drift, cascade trust, and the false confidence behind all of the above</span>
+          </article>
+        </div>
+
+        <div class="figure reveal">
+          <svg viewBox="0 0 760 200" role="img" aria-label="The calibration loop for an agent judge">
+            <defs>
+              <marker id="lar" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9c6f12"/></marker>
+            </defs>
+            <g font-family="JetBrains Mono, monospace" font-size="11">
+              <rect x="10" y="64" width="120" height="56" rx="10" fill="none" stroke="#8b3144" stroke-width="1.6"/>
+              <text x="70" y="88" text-anchor="middle" fill="#8b3144">gold runs</text>
+              <text x="70" y="104" text-anchor="middle" fill="#9c8a78" font-size="9.5">human labeled</text>
+
+              <rect x="180" y="64" width="120" height="56" rx="10" fill="none" stroke="#8b3144" stroke-width="1.6"/>
+              <text x="240" y="88" text-anchor="middle" fill="#8b3144">run judge</text>
+              <text x="240" y="104" text-anchor="middle" fill="#9c8a78" font-size="9.5">score the runs</text>
+
+              <rect x="350" y="64" width="124" height="56" rx="10" fill="none" stroke="#8b3144" stroke-width="1.6"/>
+              <text x="412" y="88" text-anchor="middle" fill="#8b3144">compare</text>
+              <text x="412" y="104" text-anchor="middle" fill="#9c8a78" font-size="9.5">judge vs human</text>
+
+              <rect x="524" y="64" width="124" height="56" rx="10" fill="none" stroke="#8b3144" stroke-width="1.6"/>
+              <text x="586" y="88" text-anchor="middle" fill="#8b3144">tune rubric</text>
+              <text x="586" y="104" text-anchor="middle" fill="#9c8a78" font-size="9.5">fix worst cases</text>
+
+              <rect x="678" y="64" width="74" height="56" rx="10" fill="#6e2433"/>
+              <text x="715" y="88" text-anchor="middle" fill="#fbf3ec">ship</text>
+              <text x="715" y="104" text-anchor="middle" fill="#e6c45c" font-size="9.5">monitor</text>
+
+              <path d="M130 92 H174" stroke="#9c6f12" stroke-width="2" marker-end="url(#lar)"/>
+              <path d="M300 92 H344" stroke="#9c6f12" stroke-width="2" marker-end="url(#lar)"/>
+              <path d="M474 92 H518" stroke="#9c6f12" stroke-width="2" marker-end="url(#lar)"/>
+              <path d="M648 92 H672" stroke="#9c6f12" stroke-width="2" marker-end="url(#lar)"/>
+              <path d="M586 64 C 586 28, 240 28, 240 60" stroke="#9c6f12" stroke-width="1.8" fill="none" stroke-dasharray="5 4" marker-end="url(#lar)"/>
+              <text x="413" y="22" text-anchor="middle" fill="#9c6f12" font-size="9.5">repeat until judge and humans agree</text>
+            </g>
+          </svg>
+          <div class="figcap">Calibration is a loop, not a launch step. Re-run it whenever the judge, the rubric, or the agent's task distribution changes.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHEAT SHEET -->
+    <section id="cheatsheet" class="divider-soft">
+      <div class="wrap">
+        <div class="label reveal">Quick reference</div>
+        <h2 class="sec reveal">The one-screen cheat sheet</h2>
+        <p class="lead prose reveal">Pin it next to the agent dashboard you are about to over-trust.</p>
+        <div class="table-wrap reveal">
+          <table>
+            <thead>
+              <tr><th>Failure mode</th><th>First move that helps</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Position (run A vs B)</td><td>Swap order, average, require agreement both ways</td></tr>
+              <tr><td>Verbosity / step count</td><td>Normalize for length and steps in the rubric</td></tr>
+              <tr><td>Style / confidence</td><td>Score content on a rubric, not polish</td></tr>
+              <tr><td>Self-preference / leakage</td><td>Judge from a different model family than the agent</td></tr>
+              <tr><td>Outcome-only blindness</td><td>Score the trajectory, not just the final answer</td></tr>
+              <tr><td>Unverified tool use</td><td>Check tools and end state with code; judge the rest</td></tr>
+              <tr><td>Long-trajectory fade</td><td>Chunk the run; judge step groups, not one blob</td></tr>
+              <tr><td>Sycophancy to the goal</td><td>Keep the target answer out of the judge prompt</td></tr>
+              <tr><td>Reward hacking</td><td>Do not train on one judge; add ground truth and humans</td></tr>
+              <tr><td>Self-eval / cascade</td><td>Separate actor and critic; add independent checks</td></tr>
+              <tr><td>Calibration drift</td><td>Pin the judge version, keep anchor runs</td></tr>
+              <tr><td>All of it</td><td>Calibrate against human-labeled trajectories</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SOURCES -->
+    <section id="sources" class="divider-soft">
+      <div class="wrap">
+        <div class="label reveal">Sources</div>
+        <h2 class="sec reveal">Where this comes from</h2>
+        <p class="lead prose reveal">Three works on judge bias and two on evaluating agents. Every claim above traces back to one of these.</p>
+
+        <p class="ref-group-label reveal">On judge bias</p>
+        <div class="refs">
+          <div class="ref reveal"><span class="yr">2023</span><span class="t">Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena</span><span class="d">Zheng et al. The study behind the agreement number, and the first to name position, verbosity, and self-enhancement bias.</span><a href="https://arxiv.org/abs/2306.05685" target="_blank" rel="noopener">arxiv.org/abs/2306.05685</a></div>
+          <div class="ref reveal"><span class="yr">2025</span><span class="t">Justice or Prejudice? Quantifying Biases in LLM-as-a-Judge</span><span class="d">Ye et al. (ICLR). The CALM framework, which formalizes a dozen distinct judge biases and how to provoke them.</span><a href="https://arxiv.org/abs/2410.02736" target="_blank" rel="noopener">arxiv.org/abs/2410.02736</a></div>
+          <div class="ref reveal"><span class="yr">2024</span><span class="t">A Survey on LLM-as-a-Judge</span><span class="d">A broad map of judging methods, bias types, and the mitigation strategies behind "The Defense."</span><a href="https://arxiv.org/abs/2411.15594" target="_blank" rel="noopener">arxiv.org/abs/2411.15594</a></div>
+        </div>
+
+        <p class="ref-group-label reveal">On evaluating agents</p>
+        <div class="refs">
+          <div class="ref reveal"><span class="yr">2025</span><span class="t">A Survey on Evaluation of LLM-based Agents</span><span class="d">Covers trajectory-based assessment, and the split between reference-based checks and reference-free LLM-judge scoring of a run.</span><a href="https://arxiv.org/abs/2503.16416" target="_blank" rel="noopener">arxiv.org/abs/2503.16416</a></div>
+          <div class="ref reveal"><span class="yr">2024</span><span class="t">tau-bench: A Benchmark for Tool-Agent-User Interaction</span><span class="d">Yao et al. Verifies success by checking the final database state against a goal, and shows even strong agents are inconsistent across repeated trials.</span><a href="https://arxiv.org/abs/2406.12045" target="_blank" rel="noopener">arxiv.org/abs/2406.12045</a></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p class="f-quote">Verify what you can. Judge what you cannot. Calibrate both, often.</p>
+    <p class="f-meta">Written by <a href="https://www.linkedin.com/in/aadityapanchal" target="_blank" rel="noopener">Aditya Panchal</a> &nbsp;|&nbsp; <a href="../">More posts</a></p>
+    <p class="f-fine">Original writing and diagrams. Claims are sourced above. Your judge may still be biased after reading this.</p>
+  </footer>
+
+  <script>
+    (function () {
+      document.body.classList.add('has-js');
+
+      var root = document.documentElement;
+      var saved = null;
+      try { saved = localStorage.getItem('judge-theme'); } catch (e) {}
+      if (saved) {
+        root.setAttribute('data-theme', saved);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        root.setAttribute('data-theme', 'dark');
+      }
+      var btn = document.getElementById('themeBtn');
+      if (btn) {
+        btn.addEventListener('click', function () {
+          var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+          root.setAttribute('data-theme', next);
+          try { localStorage.setItem('judge-theme', next); } catch (e) {}
+        });
+      }
+
+      var bar = document.getElementById('progress');
+      function onScroll() {
+        var h = document.documentElement;
+        var max = h.scrollHeight - h.clientHeight;
+        var pct = max > 0 ? (h.scrollTop / max) * 100 : 0;
+        if (bar) bar.style.width = pct + '%';
+      }
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+
+      var reveal = document.querySelectorAll('.reveal');
+      if ('IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+          });
+        }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+        reveal.forEach(function (el) { io.observe(el); });
+      } else {
+        reveal.forEach(function (el) { el.classList.add('in'); });
+      }
+
+      var navMap = {};
+      document.querySelectorAll('.nav-links a').forEach(function (a) {
+        var id = a.getAttribute('href');
+        if (id && id.indexOf('#') === 0) navMap[id.slice(1)] = a;
+      });
+      var sections = document.querySelectorAll('main section[id]');
+      if ('IntersectionObserver' in window) {
+        var spy = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) {
+              Object.keys(navMap).forEach(function (k) { navMap[k].classList.remove('active'); });
+              if (navMap[en.target.id]) navMap[en.target.id].classList.add('active');
+            }
+          });
+        }, { threshold: 0.4, rootMargin: '-20% 0px -60% 0px' });
+        sections.forEach(function (s) { spy.observe(s); });
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,41 +1,65 @@
-# The Biased Judge
+# blogs
 
-A field guide to LLM-as-a-Judge bias: why LLMs that grade other LLMs are quietly biased, the dozen documented ways it happens, and the practical moves that cancel each one out. Single self-contained page, light/dark theme, original writing and diagrams, with sources.
+A small collection of self-contained writing on language models, agents, and evaluation. Each post is its own folder with a single `index.html` (light/dark theme, original writing and diagrams, sources included). A landing page at the root links to every post.
 
-**Live site:** [https://aadityapanchal.github.io/llm-judge-bias/](https://aadityapanchal.github.io/llm-judge-bias/) *(after enabling GitHub Pages)*
+**Live site:** [https://aadityapanchal.github.io/blogs/](https://aadityapanchal.github.io/blogs/) *(after enabling GitHub Pages)*
 
-## What is inside
+## Structure
 
-- The premise: why we use LLM judges and where the trust breaks
-- A pipeline diagram showing the three places a verdict bends
-- The Charges: ~13 biases grouped into Presentation, Ego and lineage, Persuasion, and Reasoning blind spots
-- The Defense: nine mitigation moves, each mapped to the biases it cancels
-- A calibration-loop diagram and a one-screen cheat sheet
-- 11 sourced references (papers and surveys)
+```
+blogs/
+|-- index.html              landing page that links to each post
+|-- README.md
+|-- llm-judge-bias/
+|   |-- index.html          post -> /blogs/llm-judge-bias/
+|-- <future-post>/
+|   |-- index.html          post -> /blogs/<future-post>/
+```
+
+GitHub Pages serves from the repo root, so every folder with an `index.html` is published automatically.
+
+## Posts
+
+- **Judging the Agent: LLM-as-a-Judge Bias in Agentic Systems** -> [`llm-judge-bias/`](llm-judge-bias/)
+  Why LLM judges that grade agentic systems are biased, where the agent setting makes it worse, and the moves that fix it.
+
+## Add a new post
+
+1. Create a folder, for example `my-topic/`
+2. Add `my-topic/index.html`
+3. Add a card linking to `my-topic/` in the root `index.html`
+4. Commit and push. It goes live at `/blogs/my-topic/`
 
 ## Enable GitHub Pages
 
-1. Push `index.html` to the `main` branch
+1. Push to the `main` branch
 2. Repo **Settings > Pages**
 3. Source: **Deploy from a branch**
 4. Branch: **main**, folder: **/ (root)**
-5. Save. Live in about 1 to 2 minutes at the URL above
+5. Save. Live in about 1 to 2 minutes
 
 ## Local preview
 
-Open `index.html` in a browser, or:
-
 ```bash
 python3 -m http.server 8080
-# visit http://localhost:8080
+# landing page:  http://localhost:8080/
+# the post:      http://localhost:8080/llm-judge-bias/
 ```
 
 ## Push changes (personal account, no saved credentials)
 
+If you renamed the repo from `llm-judge-bias` to `blogs`, point your local remote at the new name first:
+
 ```bash
 cd /Users/aditya.panchal/Desktop/temp
-git add index.html README.md
-git commit -m "Redesign: field-guide layout, expanded biases, light/dark theme"
+git remote set-url origin https://github.com/aadityapanchal/blogs.git
+```
+
+Then commit and push:
+
+```bash
+git add .
+git commit -m "Restructure into multi-post blogs repo; make post agent-specific"
 git -c credential.helper= push origin main
 ```
 
@@ -43,4 +67,4 @@ Use your personal PAT when prompted for the password.
 
 ## Notes
 
-All writing and diagrams are original. Every numeric claim traces to a paper in the Sources section, not to a third-party graphic.
+All writing and diagrams are original. Every claim traces to a paper in each post's Sources section, not to a third-party graphic.
