@@ -13,14 +13,6 @@ A field guide to LLM-as-a-Judge bias: why LLMs that grade other LLMs are quietly
 - A calibration-loop diagram and a one-screen cheat sheet
 - 11 sourced references (papers and surveys)
 
-## Enable GitHub Pages
-
-1. Push `index.html` to the `main` branch
-2. Repo **Settings > Pages**
-3. Source: **Deploy from a branch**
-4. Branch: **main**, folder: **/ (root)**
-5. Save. Live in about 1 to 2 minutes at the URL above
-
 ## Local preview
 
 Open `index.html` in a browser, or:
