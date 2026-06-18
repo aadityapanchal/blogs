@@ -2,7 +2,7 @@
 
 A field guide to LLM-as-a-Judge bias: why LLMs that grade other LLMs are quietly biased, the dozen documented ways it happens, and the practical moves that cancel each one out. Single self-contained page, light/dark theme, original writing and diagrams, with sources.
 
-**Live site:** [https://aadityapanchal.github.io/llm-judge-bias/](https://aadityapanchal.github.io/llm-judge-bias/) *(after enabling GitHub Pages)*
+**Live site:** [https://aadityapanchal.github.io/llm-judge-bias/](https://aadityapanchal.github.io/llm-judge-bias/)
 
 ## What is inside
 
