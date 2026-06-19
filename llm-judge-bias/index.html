@@ -105,7 +105,8 @@
       color: var(--ink); text-decoration: none; letter-spacing: -0.01em;
       display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;
     }
-    .brand .gavel { color: var(--primary-2); }
+    .brand .gavel { color: var(--primary-2); display: inline-flex; align-items: center; }
+    .brand .gavel svg { width: 18px; height: 18px; }
     .nav-links { display: flex; gap: 1.2rem; margin-left: auto; align-items: center; }
     .nav-links a {
       font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
@@ -343,7 +344,7 @@
 
   <nav>
     <div class="nav-inner">
-      <a href="#top" class="brand"><span class="gavel">&#167;</span> The Biased Judge</a>
+      <a href="#top" class="brand"><span class="gavel" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></span> The Biased Judge</a>
       <div class="nav-links">
         <a href="../">All posts</a>
         <a href="#premise">Premise</a>

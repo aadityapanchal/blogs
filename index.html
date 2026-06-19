@@ -11,36 +11,36 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #f5efe3;
-      --surface: #fffdf8;
-      --surface-2: #f3ebdd;
-      --ink: #221b16;
-      --ink-soft: #4d4339;
-      --muted-solid: #8a7c6b;
-      --line: rgba(70, 45, 30, 0.14);
-      --primary: #6e2433;
-      --primary-2: #8b3144;
-      --gold: #9c6f12;
-      --gold-bright: #c69a2b;
-      --shadow-sm: 0 2px 10px rgba(70, 30, 35, 0.06);
-      --shadow: 0 14px 44px rgba(70, 30, 35, 0.10);
+      --bg: #ebe4da;
+      --surface: #faf7f2;
+      --surface-2: #e0d8cc;
+      --ink: #1a1612;
+      --ink-soft: #3d3830;
+      --muted-solid: #655e54;
+      --line: rgba(26, 22, 18, 0.14);
+      --primary: #6b4226;
+      --primary-2: #854f2e;
+      --gold: #946b0a;
+      --gold-bright: #b8840f;
+      --shadow-sm: 0 2px 12px rgba(26, 22, 18, 0.07);
+      --shadow: 0 16px 48px rgba(26, 22, 18, 0.12);
       --radius: 16px;
       --maxw: 920px;
     }
     html[data-theme="dark"] {
-      --bg: #16110e;
-      --surface: #221b16;
-      --surface-2: #2a221c;
-      --ink: #f4ece1;
-      --ink-soft: #d9cdbd;
-      --muted-solid: #a99a87;
-      --line: rgba(235, 215, 190, 0.13);
-      --primary: #e9b1bc;
-      --primary-2: #f0c2cb;
-      --gold: #e6c45c;
-      --gold-bright: #f0d278;
-      --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.3);
-      --shadow: 0 14px 44px rgba(0, 0, 0, 0.45);
+      --bg: #100f0d;
+      --surface: #1c1a17;
+      --surface-2: #282521;
+      --ink: #f3ece2;
+      --ink-soft: #cfc5b8;
+      --muted-solid: #9a9186;
+      --line: rgba(243, 236, 226, 0.12);
+      --primary: #e8b98a;
+      --primary-2: #f0caa4;
+      --gold: #d9a832;
+      --gold-bright: #ecc04a;
+      --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.32);
+      --shadow: 0 16px 48px rgba(0, 0, 0, 0.46);
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
@@ -65,7 +65,8 @@
     }
     .topbar-inner { max-width: var(--maxw); margin: 0 auto; padding: 0.7rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
     .brand { font-family: 'Fraunces', serif; font-weight: 600; font-size: 1.02rem; color: var(--ink); text-decoration: none; display: flex; align-items: center; gap: 0.5rem; }
-    .brand .gavel { color: var(--primary-2); }
+    .brand .gavel { color: var(--primary-2); display: inline-flex; align-items: center; }
+    .brand .gavel svg { width: 18px; height: 18px; }
     .theme-btn {
       margin-left: auto; background: var(--surface-2); border: 1px solid var(--line);
       width: 38px; height: 38px; border-radius: 50%; cursor: pointer;
@@ -97,7 +98,7 @@
       padding: 1.6rem 1.7rem; box-shadow: var(--shadow-sm);
       transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
     }
-    .post:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--gold) 45%, var(--line)); }
+    .post:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--primary) 35%, var(--line)); }
     .post .tag { font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); }
     .post h2 { font-size: 1.5rem; margin: 0.5rem 0 0.5rem; color: var(--ink); }
     .post p { color: var(--ink-soft); font-size: 1.02rem; margin-bottom: 0.9rem; }
@@ -106,7 +107,7 @@
     .post:hover .go { color: var(--gold); }
     .soon { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--muted-solid); padding: 0.4rem 0 0; }
 
-    footer { margin-top: auto; background: linear-gradient(160deg, #2c0f17, #561e2c); color: rgba(246, 239, 230, 0.72); padding: 2.4rem 1.5rem; text-align: center; }
+    footer { margin-top: auto; background: linear-gradient(160deg, #1a1612, #3d3428); color: rgba(243, 236, 226, 0.78); padding: 2.4rem 1.5rem; text-align: center; }
     footer a { color: var(--gold-bright); text-decoration: none; }
     footer a:hover { text-decoration: underline; }
     footer .f-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; letter-spacing: 0.04em; }
@@ -117,7 +118,7 @@
 <body>
   <div class="topbar">
     <div class="topbar-inner">
-      <a href="./" class="brand"><span class="gavel">&#167;</span> Aditya Panchal</a>
+      <a href="./" class="brand"><span class="gavel" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></svg></span> Aditya Panchal</a>
       <button class="theme-btn" id="themeBtn" aria-label="Toggle dark mode" title="Toggle theme">
         <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>
         <svg class="moon" viewBox="0 0 24 24" fill="currentColor"><path d="M20 14.5A8 8 0 0 1 9.5 4a0.6 0.6 0 0 0-0.8-0.8A9 9 0 1 0 20.8 15.3a0.6 0.6 0 0 0-0.8-0.8z"/></svg>
@@ -135,6 +136,12 @@
 
     <section class="posts">
       <div class="post-label">Posts</div>
+      <a class="post" href="agent-reliability/">
+        <span class="tag">Agent Evaluation</span>
+        <h2>Death by a Thousand Steps: Capability vs. Reliability</h2>
+        <p>A benchmark says an agent can do a task. Production needs it to do the task every time, across a long horizon, where small per-step errors compound. Why a 90% agent is a 35% product, and how to measure the difference.</p>
+        <div class="meta"><span>~6 min read</span><span class="go">Read post</span></div>
+      </a>
       <a class="post" href="llm-judge-bias/">
         <span class="tag">Agent Evaluation</span>
         <h2>Judging the Agent: LLM-as-a-Judge Bias in Agentic Systems</h2>

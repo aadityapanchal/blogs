@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Death by a Thousand Steps: Capability vs. Reliability in Agentic Systems</title>
+  <meta name="description" content="A benchmark number says an agent can do a task. Production needs it to do the task every time, across a long horizon, where small per-step errors compound. Why a 90% agent is a 35% product, and how to measure the difference.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #eaf0f4;
+      --bg-alt: #dde6ec;
+      --surface: #fbfdfe;
+      --surface-2: #e6eef3;
+      --ink: #152630;
+      --ink-soft: #3a4d59;
+      --muted-solid: #6c8392;
+      --line: rgba(24, 56, 76, 0.14);
+      --primary: #1d5870;
+      --primary-2: #2a7593;
+      --gold: #b06a1d;
+      --gold-bright: #cf842a;
+      --shadow-sm: 0 2px 10px rgba(20, 50, 70, 0.07);
+      --shadow: 0 14px 44px rgba(20, 50, 70, 0.13);
+      --radius: 16px;
+      --maxw: 1080px;
+      --prose: 70ch;
+    }
+
+    html[data-theme="dark"] {
+      --bg: #0b141a;
+      --bg-alt: #101e26;
+      --surface: #14232c;
+      --surface-2: #1c2e38;
+      --ink: #eaf3f8;
+      --ink-soft: #c3d4de;
+      --muted-solid: #88a0ad;
+      --line: rgba(178, 210, 230, 0.13);
+      --primary: #7fc6e2;
+      --primary-2: #9bd6ec;
+      --gold: #e6b35c;
+      --gold-bright: #f2c878;
+      --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.32);
+      --shadow: 0 14px 44px rgba(0, 0, 0, 0.48);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Newsreader', Georgia, serif;
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 19px;
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.4s ease, color 0.4s ease;
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3, h4, .display {
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      line-height: 1.12;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 0.82em;
+      letter-spacing: 0.01em;
+    }
+
+    a { color: var(--primary-2); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    a:hover { color: var(--gold); }
+
+    .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 1.5rem; }
+    .prose { max-width: var(--prose); }
+
+    /* Reading progress */
+    .progress {
+      position: fixed; top: 0; left: 0; height: 3px; width: 0%;
+      background: linear-gradient(90deg, var(--gold), var(--primary-2));
+      z-index: 200; transition: width 0.1s linear;
+    }
+
+    /* Nav */
+    nav {
+      position: sticky; top: 0; z-index: 150;
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(14px) saturate(1.2);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav-inner {
+      max-width: var(--maxw); margin: 0 auto; padding: 0.7rem 1.5rem;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .brand {
+      font-family: 'Fraunces', serif; font-weight: 600; font-size: 1.02rem;
+      color: var(--ink); text-decoration: none; letter-spacing: -0.01em;
+      display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;
+    }
+    .brand .peak { color: var(--primary-2); display: inline-flex; }
+    .brand .peak svg { width: 19px; height: 19px; }
+    .nav-links { display: flex; gap: 1.2rem; margin-left: auto; align-items: center; }
+    .nav-links a {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--muted-solid); text-decoration: none; transition: color 0.2s;
+    }
+    .nav-links a:hover, .nav-links a.active { color: var(--primary-2); }
+    @media (max-width: 820px) { .nav-links a:not(.theme-only) { display: none; } }
+
+    .theme-btn {
+      background: var(--surface-2); border: 1px solid var(--line);
+      width: 38px; height: 38px; border-radius: 50%; cursor: pointer;
+      display: grid; place-items: center; color: var(--ink); transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .theme-btn:hover { border-color: var(--gold); color: var(--gold); transform: rotate(-12deg); }
+    .theme-btn svg { width: 18px; height: 18px; }
+    html[data-theme="light"] .moon { display: none; }
+    html[data-theme="dark"] .sun { display: none; }
+
+    /* Hero */
+    .hero {
+      position: relative; overflow: hidden;
+      background:
+        radial-gradient(ellipse 70% 55% at 72% 88%, color-mix(in srgb, var(--gold) 30%, transparent), transparent 68%),
+        linear-gradient(165deg, #08171f 0%, #0f3245 52%, #1d5870 100%);
+      color: #eaf4f8;
+      padding: clamp(3rem, 8vw, 6rem) 1.5rem clamp(3.5rem, 9vw, 6.5rem);
+      text-align: center;
+    }
+    .hero::after {
+      content: ""; position: absolute; inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+      background-size: 4px 4px; pointer-events: none; opacity: 0.5;
+    }
+    .hero-inner { position: relative; max-width: 760px; margin: 0 auto; }
+    .peakmark { width: 158px; height: 122px; margin: 0 auto 1.7rem; }
+    .peakmark svg { width: 100%; height: 100%; overflow: visible; }
+    @keyframes flagWave { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(0.55); } }
+    @keyframes climb { 0% { offset-distance: 0%; } 82% { offset-distance: 100%; } 100% { offset-distance: 100%; } }
+    @keyframes climberGlow { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+    @keyframes sunGlow { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.5; } }
+    .flag { transform-box: fill-box; transform-origin: 0% 50%; animation: flagWave 3.4s ease-in-out infinite; }
+    .climber {
+      offset-path: path('M102,114 L93,95 L108,78 L94,60 L106,42 L102,25');
+      offset-rotate: 0deg;
+      animation: climb 5.5s ease-in-out infinite, climberGlow 2.4s ease-in-out infinite;
+    }
+    .sun-glow { animation: sunGlow 6s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) {
+      .flag, .climber, .sun-glow { animation: none; }
+      .climber { offset-distance: 0%; }
+    }
+    .kicker {
+      display: inline-block; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--gold-bright); border: 1px solid rgba(230, 179, 92, 0.4);
+      padding: 0.35rem 0.9rem; border-radius: 999px; margin-bottom: 1.5rem;
+    }
+    .hero h1 {
+      color: #f3fafd; font-weight: 600;
+      font-size: clamp(2.2rem, 6.5vw, 4rem); margin-bottom: 1.1rem;
+    }
+    .hero h1 .em { font-style: italic; color: var(--gold-bright); }
+    .hero-sub {
+      font-size: clamp(1.05rem, 2.4vw, 1.32rem); line-height: 1.6;
+      color: rgba(234, 244, 248, 0.82); max-width: 640px; margin: 0 auto 2rem;
+    }
+    .hero-meta {
+      display: flex; gap: 1.2rem; justify-content: center; flex-wrap: wrap;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.74rem;
+      color: rgba(234, 244, 248, 0.6); letter-spacing: 0.04em;
+    }
+    .hero-meta a { color: var(--gold-bright); text-decoration: none; }
+    .hero-meta a:hover { text-decoration: underline; }
+
+    /* Sections */
+    section { padding: clamp(3rem, 7vw, 5.5rem) 0; }
+    .label {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+      letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold);
+      display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1rem;
+    }
+    .label::before { content: ""; width: 26px; height: 2px; background: var(--gold); display: inline-block; }
+    h2.sec {
+      font-size: clamp(1.8rem, 4.2vw, 2.7rem); margin-bottom: 1.2rem; color: var(--ink);
+      max-width: 24ch;
+    }
+    .lead { font-size: 1.18rem; color: var(--ink-soft); margin-bottom: 1.2rem; }
+    .prose p { margin-bottom: 1.15rem; color: var(--ink-soft); }
+    .prose p strong { color: var(--ink); font-weight: 600; }
+
+    .divider-soft { border-top: 1px solid var(--line); }
+
+    /* Pull quote */
+    .pull {
+      font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+      font-size: clamp(1.4rem, 3.5vw, 2rem); line-height: 1.35; color: var(--primary);
+      border-left: 3px solid var(--gold); padding: 0.4rem 0 0.4rem 1.6rem;
+      margin: 2.2rem 0; max-width: 32ch;
+    }
+
+    /* Callout */
+    .callout {
+      background: var(--surface); border: 1px solid var(--line);
+      border-left: 4px solid var(--gold); border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 1.3rem 1.6rem; margin: 1.8rem 0; box-shadow: var(--shadow-sm);
+      font-size: 1.02rem; color: var(--ink-soft);
+    }
+    .callout b { color: var(--primary); }
+    .callout .calc {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.92rem; color: var(--ink);
+      display: block; margin-top: 0.6rem; letter-spacing: 0.01em;
+    }
+
+    /* Figures: fixed cool "snow" card so diagrams stay legible in both themes */
+    .figure {
+      background: #f1f6fa; border: 1px solid rgba(24, 56, 76, 0.16);
+      border-radius: var(--radius); box-shadow: var(--shadow);
+      padding: 2rem 1.5rem 1.4rem; margin: 2.2rem 0;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+    }
+    .figure svg { display: block; margin: 0 auto; width: 100%; max-width: 720px; height: auto; }
+    .figcap {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #4d616e;
+      text-align: center; margin-top: 1.1rem; letter-spacing: 0.03em;
+    }
+
+    /* Failure groups */
+    .group { margin-top: 2.6rem; }
+    .group-head { display: flex; align-items: baseline; gap: 0.9rem; margin-bottom: 0.4rem; flex-wrap: wrap; }
+    .group-num {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--gold);
+      border: 1px solid var(--line); border-radius: 6px; padding: 0.1rem 0.5rem;
+    }
+    .group-head h3 { font-size: 1.5rem; color: var(--primary); }
+    .group-sub { color: var(--muted-solid); font-size: 1.02rem; margin-bottom: 1.3rem; font-style: italic; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 1.1rem; }
+    .card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 1.4rem 1.45rem; box-shadow: var(--shadow-sm);
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+      position: relative;
+    }
+    .card:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--gold) 45%, var(--line)); }
+    .card h4 { font-size: 1.18rem; margin-bottom: 0.5rem; color: var(--ink); }
+    .card .tell { font-size: 0.98rem; color: var(--ink-soft); margin-bottom: 0.7rem; }
+    .card .eg {
+      font-size: 0.9rem; color: var(--muted-solid); font-style: italic;
+      border-left: 2px solid var(--line); padding-left: 0.75rem; margin-bottom: 0.85rem;
+    }
+    .fixtag {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; letter-spacing: 0.03em;
+      background: var(--surface-2); color: var(--primary); border-radius: 6px;
+      padding: 0.3rem 0.6rem; border: 1px solid var(--line);
+    }
+    .fixtag b { color: var(--gold); font-weight: 600; }
+
+    /* Descent / fixes list */
+    .moves { counter-reset: m; margin-top: 1.8rem; display: grid; gap: 1rem; }
+    .move {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 1.4rem 1.5rem 1.4rem 4.2rem; position: relative; box-shadow: var(--shadow-sm);
+      transition: border-color 0.2s;
+    }
+    .move:hover { border-color: color-mix(in srgb, var(--gold) 40%, var(--line)); }
+    .move::before {
+      counter-increment: m; content: counter(m, decimal-leading-zero);
+      position: absolute; left: 1.3rem; top: 1.35rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; font-weight: 600;
+      color: var(--gold);
+    }
+    .move h4 { font-size: 1.16rem; margin-bottom: 0.35rem; }
+    .move p { font-size: 0.99rem; color: var(--ink-soft); margin: 0; }
+    .move .targets {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; letter-spacing: 0.04em;
+      color: var(--muted-solid); text-transform: uppercase; margin-top: 0.6rem; display: block;
+    }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; margin-top: 1.8rem; border-radius: var(--radius); box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.95rem; min-width: 0; }
+    thead th {
+      background: var(--primary); color: #f1f8fb; text-align: left; padding: 0.9rem 1.1rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em;
+      font-weight: 500;
+    }
+    html[data-theme="dark"] thead th { color: #0c1c24; }
+    tbody td { padding: 0.85rem 1.1rem; border-bottom: 1px solid var(--line); color: var(--ink-soft); vertical-align: top; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+    tbody td:first-child { font-family: 'Fraunces', serif; font-weight: 600; color: var(--ink); }
+
+    /* References */
+    .refs { margin-top: 1.8rem; display: grid; gap: 0.7rem; }
+    .ref {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+      padding: 1rem 1.2rem; display: grid; grid-template-columns: auto 1fr; gap: 0.2rem 1rem;
+      align-items: baseline; transition: border-color 0.2s;
+    }
+    .ref:hover { border-color: color-mix(in srgb, var(--gold) 40%, var(--line)); }
+    .ref .yr { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--gold); grid-row: span 2; padding-top: 0.2rem; }
+    .ref .t { font-family: 'Fraunces', serif; font-weight: 600; color: var(--ink); font-size: 1.04rem; }
+    .ref .d { font-size: 0.92rem; color: var(--muted-solid); grid-column: 2; }
+    .ref a { font-size: 0.82rem; font-family: 'JetBrains Mono', monospace; grid-column: 2; }
+
+    /* Footer */
+    footer {
+      background: linear-gradient(165deg, #08171f, #1d5870); color: rgba(234, 244, 248, 0.72);
+      padding: 3rem 1.5rem; text-align: center; margin-top: 2rem;
+    }
+    footer .f-quote { font-family: 'Fraunces', serif; font-style: italic; font-size: 1.25rem; color: #f1f8fb; max-width: 34ch; margin: 0 auto 1.4rem; line-height: 1.4; }
+    footer a { color: var(--gold-bright); }
+    footer .f-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; letter-spacing: 0.04em; }
+    footer .f-fine { font-size: 0.72rem; opacity: 0.55; margin-top: 1rem; font-family: 'JetBrains Mono', monospace; }
+
+    /* Reveal animation (JS-gated) */
+    .has-js .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.7s ease, transform 0.7s ease; }
+    .has-js .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      .has-js .reveal { opacity: 1; transform: none; transition: none; }
+    }
+
+    /* Mobile */
+    @media (max-width: 680px) {
+      body { font-size: 18px; }
+      .wrap { padding: 0 1.15rem; }
+      .nav-inner { padding: 0.6rem 1.15rem; }
+      .pull { margin: 1.8rem 0; padding-left: 1.1rem; }
+      .move { padding: 1.2rem 1.2rem 1.2rem 3.4rem; }
+      .move::before { left: 1.1rem; top: 1.2rem; }
+      .figure { padding: 1.3rem 0.9rem 1rem; }
+      .figure svg { width: 660px; max-width: none; }
+      .figcap::after { content: " (scroll to see all)"; opacity: 0.7; }
+    }
+    @media (max-width: 380px) {
+      .figure svg { width: 600px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="#top" class="brand">
+        <span class="peak" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M2 20 L9 7 L13 13 L16.5 8 L22 20 Z"/><path d="M7.2 11 L9 7 L10.8 11" stroke-width="1.3"/></svg></span>
+        The Long Climb
+      </a>
+      <div class="nav-links">
+        <a href="../">All posts</a>
+        <a href="#basecamp">Base Camp</a>
+        <a href="#ascent">The Ascent</a>
+        <a href="#deathzone">Death Zone</a>
+        <a href="#crevasses">Crevasses</a>
+        <a href="#descent">The Descent</a>
+        <a href="#sources">Sources</a>
+        <button class="theme-btn theme-only" id="themeBtn" aria-label="Toggle dark mode" title="Toggle theme">
+          <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>
+          <svg class="moon" viewBox="0 0 24 24" fill="currentColor"><path d="M20 14.5A8 8 0 0 1 9.5 4a0.6 0.6 0 0 0-0.8-0.8A9 9 0 1 0 20.8 15.3a0.6 0.6 0 0 0-0.8-0.8z"/></svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero" id="top">
+    <div class="hero-inner">
+      <div class="peakmark" aria-hidden="true">
+        <svg viewBox="0 0 158 122">
+          <circle class="sun-glow" cx="116" cy="40" r="18" fill="#e6b35c" opacity="0.38"/>
+          <!-- back range -->
+          <polygon points="0,114 40,60 82,114" fill="#123140" stroke="#5a93ab" stroke-width="1.1"/>
+          <!-- main peak -->
+          <polygon points="46,114 102,22 158,114" fill="#16455c" stroke="#7fc6e2" stroke-width="1.6"/>
+          <!-- snow cap -->
+          <polygon points="102,22 90,43 96,40 102,49 108,40 114,43" fill="#e2f2f9"/>
+          <!-- ascent route: solid lower half -->
+          <path d="M102,114 L93,95 L108,78" fill="none" stroke="#e6b35c" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="4 3"/>
+          <!-- ascent route: faded upper half (reliability thinning at altitude) -->
+          <path d="M108,78 L94,60 L106,42 L102,24" fill="none" stroke="#e6b35c" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="3 4" opacity="0.5"/>
+          <!-- climber: ascends the route on a loop -->
+          <circle class="climber" cx="0" cy="0" r="2.7" fill="#f2c878"/>
+          <!-- summit flag -->
+          <line x1="102" y1="24" x2="102" y2="13" stroke="#e2f2f9" stroke-width="1.5"/>
+          <path class="flag" d="M102,13 L115,16.5 L102,20 Z" fill="#c0492f"/>
+        </svg>
+      </div>
+      <span class="kicker">Agent Evaluation / Field Guide</span>
+      <h1>A 90% agent is a <span class="em">35% product.</span></h1>
+      <p class="hero-sub">Reaching the right answer once is capability: the summit. Doing it every time, across a long climb of plans, tool calls, and steps, is reliability: the descent. Benchmarks celebrate the summit. Production lives or dies on the way down, where small per-step errors compound and most agents quietly fall apart.</p>
+      <div class="hero-meta">
+        <span>~6 min read</span>
+        <span>By <a href="https://www.linkedin.com/in/aadityapanchal" target="_blank" rel="noopener">Aditya Panchal</a></span>
+        <span>4 sources</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- BASE CAMP -->
+    <section id="basecamp">
+      <div class="wrap">
+        <div class="prose">
+          <div class="label reveal">Base camp</div>
+          <h2 class="sec reveal">A single success is a capability. A thousand in a row is a product.</h2>
+          <p class="reveal">Benchmarks measure the summit: whether the system <em>can</em> do the task on a good attempt. That is <strong>capability</strong>. Production asks a harder question, <strong>reliability</strong>: if you send it up a thousand times, how many climbers come home? Capability is the model's gift; reliability is mostly the harness's job.</p>
+          <p class="reveal">At a single step the two look identical. Over a long climb they diverge brutally. <strong>Make an agent 90% reliable per step on a ten-step task, and the odds it finishes are 0.9<sup>10</sup> ≈ 35%.</strong> Nothing got worse; we just asked it not to fall, ten times in a row.</p>
+
+          <div class="callout reveal">
+            <b>The headline, in one line.</b> A "90% agent" sounds nearly shippable, until you run it across a real, multi-step task.
+            <span class="calc">P(finish) = 0.90<sup>10</sup> ≈ 0.35  →  a 90% step-agent finishes ~35% of ten-step tasks.</span>
+          </div>
+
+          <blockquote class="pull reveal">An agent that succeeds once has shown you it can. Only one that succeeds again, and again, has shown you it will.</blockquote>
+
+          <p class="reveal">Mountaineers know the asymmetry in their bones: <strong>most accidents happen on the descent, not the summit.</strong> Agentic systems have the same shape. The demo is the summit; the deployment is the descent. This is a field guide to the climb down, and a companion to <a href="../llm-judge-bias/">the post on biased LLM judges</a>: that one argued your score is biased, this one argues that even an honest score, taken as a single number, lies about production.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- THE ASCENT -->
+    <section id="ascent" class="divider-soft">
+      <div class="wrap">
+        <div class="label reveal">The ascent</div>
+        <h2 class="sec reveal">One number, two completely different stories</h2>
+        <p class="lead prose reveal">Run an agent on a task <span class="mono">k</span> times and you can summarize it two ways. <b>pass@k</b> asks whether <em>at least one</em> of the attempts summited. <b>pass^k</b> asks whether <em>all</em> of them did. The same agent looks like a hero by one and a liability by the other, and the gap widens with every extra attempt.</p>
+
+        <div class="figure reveal">
+          <svg viewBox="0 0 760 300" role="img" aria-label="A chart showing pass@k rising toward 100 percent while pass-to-the-k falls toward zero as k increases">
+            <!-- axes -->
+            <line x1="80" y1="40" x2="80" y2="250" stroke="#b7c8d2" stroke-width="1.4"/>
+            <line x1="80" y1="250" x2="710" y2="250" stroke="#b7c8d2" stroke-width="1.4"/>
+            <!-- gridlines -->
+            <line x1="80" y1="40" x2="710" y2="40" stroke="#dde7ed" stroke-width="1"/>
+            <line x1="80" y1="145" x2="710" y2="145" stroke="#dde7ed" stroke-width="1"/>
+            <g font-family="JetBrains Mono, monospace" font-size="10" fill="#5f7280">
+              <text x="72" y="44" text-anchor="end">100%</text>
+              <text x="72" y="149" text-anchor="end">50%</text>
+              <text x="72" y="254" text-anchor="end">0%</text>
+              <text x="80" y="272" text-anchor="middle">1</text>
+              <text x="345.7" y="272" text-anchor="middle">4</text>
+              <text x="700" y="272" text-anchor="middle">8</text>
+              <text x="395" y="290" text-anchor="middle" fill="#4d616e">attempts (k) &#8594;  &#183;  agent succeeds 70% per try</text>
+            </g>
+            <!-- pass@k curve (looks great, misleading) -->
+            <polyline points="80,103 168.6,58.9 257.1,45.7 345.7,41.7 434.3,40.5 522.9,40.2 611.4,40 700,40"
+              fill="none" stroke="#2f9e8f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- pass^k curve (the real story) -->
+            <polyline points="80,103 168.6,147.1 257.1,178 345.7,199.6 434.3,214.7 522.9,225.3 611.4,232.7 700,237.9"
+              fill="none" stroke="#c0492f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- shared start dot -->
+            <circle cx="80" cy="103" r="3.5" fill="#16455c"/>
+            <!-- divergence marker at k=3 -->
+            <line x1="257.1" y1="45.7" x2="257.1" y2="178" stroke="#16455c" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"/>
+            <g font-family="JetBrains Mono, monospace" font-size="10.5">
+              <text x="120" y="98" fill="#16455c">k=1: both 70%</text>
+              <text x="360" y="54" fill="#2f9e8f" font-weight="600">pass@k</text>
+              <text x="700" y="60" text-anchor="end" fill="#2f9e8f">&#8594; ~100%</text>
+              <text x="470" y="206" fill="#c0492f" font-weight="600">pass^k</text>
+              <text x="700" y="222" text-anchor="end" fill="#c0492f">&#8594; ~6%</text>
+              <text x="266" y="120" fill="#16455c" font-size="9.5">at k=3: 97% vs 34%</text>
+            </g>
+          </svg>
+          <div class="figcap">Same agent, two stories. "At least one summit" (pass@k) soars; "summit every single time" (pass^k) sinks. By k=8 they tell opposite tales: ~100% versus ~6%.</div>
+        </div>
+
+        <div class="prose">
+          <p class="reveal">Which number is honest depends on what you ship. If you can <em>check</em> the output first (a coding agent whose patch must pass tests), pass@k is fair: you only need one good summit. If the agent acts live with no safety net (support, payments, anything the user sees), pass^k is the truth, because users feel the failures, not the best of three.</p>
+          <p class="reveal">On <span class="mono">τ-bench</span>, an agent at 61% pass@1 fell to 25% pass^8: across eight runs, the odds of at least one failure neared 75%. Same agent. The leaderboard saw a B-minus; the customer saw a coin flip that loses three times in four.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- DEATH ZONE -->
+    <section id="deathzone" class="divider-soft">
+      <div class="wrap">
+        <div class="label reveal">The death zone</div>
+        <h2 class="sec reveal">Why the curve dives faster than the math predicts</h2>
+        <p class="lead prose reveal">If every step failed independently, reliability would decay gently and predictably, like a rope losing one strand at a time. Real agents decay <em>faster</em> than that, because their errors are correlated: once a climber takes a wrong turn in the fog, the next steps tend to follow it down.</p>
+
+        <div class="figure reveal">
+          <svg viewBox="0 0 760 300" role="img" aria-label="A chart comparing an independent-error decay curve with a steeper real-agent decay curve that melts down past a death-zone line">
+            <!-- death zone shading (below 50%) -->
+            <rect x="80" y="145" width="630" height="105" fill="#c0492f" opacity="0.06"/>
+            <!-- axes -->
+            <line x1="80" y1="40" x2="80" y2="250" stroke="#b7c8d2" stroke-width="1.4"/>
+            <line x1="80" y1="250" x2="710" y2="250" stroke="#b7c8d2" stroke-width="1.4"/>
+            <!-- 50% death-zone line -->
+            <line x1="80" y1="145" x2="710" y2="145" stroke="#6c8392" stroke-width="1.3" stroke-dasharray="6 4"/>
+            <g font-family="JetBrains Mono, monospace" font-size="10" fill="#5f7280">
+              <text x="72" y="44" text-anchor="end">100%</text>
+              <text x="72" y="149" text-anchor="end">50%</text>
+              <text x="72" y="254" text-anchor="end">0%</text>
+              <text x="395" y="290" text-anchor="middle" fill="#4d616e">task length (steps / hours of work) &#8594;</text>
+            </g>
+            <!-- compounding-penalty fill between curves -->
+            <path d="M80,51 C 210,95 320,150 420,190 C 480,216 540,238 620,246 C 655,248 680,248 700,248
+                     L700,135 C 480,110 250,70 80,51 Z" fill="#c0492f" opacity="0.08"/>
+            <!-- independent baseline (gentle) -->
+            <path d="M80,51 C 250,70 480,110 700,135" fill="none" stroke="#2a7593" stroke-width="2.6" stroke-linecap="round"/>
+            <!-- real curve (steep, melts down toward but not below the 0% axis) -->
+            <path d="M80,51 C 210,95 320,150 420,190 C 480,216 540,238 620,246 C 655,248 680,248 700,248"
+              fill="none" stroke="#c0492f" stroke-width="2.6" stroke-linecap="round"/>
+            <!-- meltdown onset marker -->
+            <circle cx="420" cy="190" r="4" fill="#c0492f"/>
+            <line x1="420" y1="190" x2="420" y2="250" stroke="#c0492f" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>
+            <g font-family="JetBrains Mono, monospace" font-size="10.5">
+              <text x="486" y="104" fill="#2a7593">if errors were independent</text>
+              <text x="150" y="175" fill="#c0492f">real agents: errors compound</text>
+              <text x="428" y="184" fill="#c0492f" font-weight="600">meltdown onset</text>
+              <text x="92" y="44" fill="#16455c" font-size="9.5">short task: both look fine</text>
+              <text x="96" y="138" fill="#6c8392" font-size="10">50% time-horizon</text>
+            </g>
+          </svg>
+          <div class="figcap">Within a single climb, each step can fail. The independent-error rope (blue) would hold most of the way; real agents (red) drift, compound, and somewhere past the death-zone line they melt down. The shaded gap is the compounding penalty, and it is invisible on any short task.</div>
+        </div>
+
+        <div class="prose">
+          <p class="reveal">Two facts make the death zone real. First, <strong>compounding is multiplicative</strong>: over an <span class="mono">H</span>-step task with per-step error rate <span class="mono">&epsilon;</span>, success scales as <span class="mono">(1 - &epsilon;)<sup>H</sup></span>, so halving the error rate barely moves a short task but transforms a long one. Second, and worse, <strong>errors are positively correlated</strong>: a study of long-horizon agents across 20,000+ episodes found decay is <em>super-linear</em>, because once an agent forms a wrong hypothesis it persists instead of recovering. Counterintuitively, the strongest models melt down most, since they attempt the ambitious multi-step strategies that have somewhere to go wrong.</p>
+          <p class="reveal">This is why one average misleads: long runs don't just lower the mean, they <strong>widen the variance</strong>. The same model can be rock-solid on five-minute tasks and erratic on four-hour ones, and only a curve, never a point, shows where that regime begins. METR tracks exactly this with the <strong>task-completion time horizon</strong>, and tellingly, the length an agent can do <em>reliably</em> (its 80% horizon) runs several times shorter than the length it can do <em>once</em>. That gap is the whole story.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CREVASSES -->
+    <section id="crevasses" class="divider-soft">
+      <div class="wrap">
+        <div class="label reveal">Crevasses</div>
+        <h2 class="sec reveal">Ten places reliability falls through</h2>
+        <p class="lead prose reveal">The first three are mirages on the way up: measurement choices that flatter the number. The next three are the death-zone mechanisms that actually eat reliability. The last four are why none of it shows up until you are already at altitude.</p>
+
+        <!-- Group 1 -->
+        <div class="group reveal">
+          <div class="group-head"><span class="group-num">Group 01</span><h3>Mirages on the way up</h3></div>
+          <p class="group-sub">Ways the metric flatters you before the climb even starts.</p>
+          <div class="cards">
+            <article class="card">
+              <h4>Best-of-N glory</h4>
+              <p class="tell">Reporting pass@k (or quietly keeping the best of several runs) sells one lucky summit as the typical outcome.</p>
+              <p class="eg">"It solved it!" really meant "it solved it once in five tries."</p>
+              <span class="fixtag"><b>Fix:</b> report pass^k too</span>
+            </article>
+            <article class="card">
+              <h4>Short-hop tasks</h4>
+              <p class="tell">Atomic, few-step benchmarks never run long enough for compounding to bite, so they overstate real-world reliability.</p>
+              <p class="eg">Great on 2-step QA, falls apart on a 30-step workflow.</p>
+              <span class="fixtag"><b>Fix:</b> test long horizons</span>
+            </article>
+            <article class="card">
+              <h4>The flattering average</h4>
+              <p class="tell">A single mean hides the spread. 100% on easy plus 0% on hard "averages" to a respectable-looking middle.</p>
+              <p class="eg">"70% success" can mean steady, or perfect-then-useless.</p>
+              <span class="fixtag"><b>Fix:</b> report variance + worst case</span>
+            </article>
+          </div>
+        </div>
+
+        <!-- Group 2 -->
+        <div class="group reveal">
+          <div class="group-head"><span class="group-num">Group 02</span><h3>The death-zone mechanisms</h3></div>
+          <p class="group-sub">What actually consumes reliability once the horizon gets long.</p>
+          <div class="cards">
+            <article class="card">
+              <h4>Multiplicative compounding</h4>
+              <p class="tell">Each step multiplies the survival probability, so success decays as (1&minus;&epsilon;)<sup>H</sup>. Long tasks punish even small per-step errors.</p>
+              <p class="eg">99% per step over 100 steps is only a 37% finish.</p>
+              <span class="fixtag"><b>Fix:</b> shrink H, decompose</span>
+            </article>
+            <article class="card">
+              <h4>Drift without recovery</h4>
+              <p class="tell">Errors are correlated: one wrong turn and the agent keeps walking that way instead of noticing and backtracking.</p>
+              <p class="eg">A bad early assumption quietly shapes every later step.</p>
+              <span class="fixtag"><b>Fix:</b> re-anchor + verify mid-run</span>
+            </article>
+            <article class="card">
+              <h4>Meltdown / doom loops</h4>
+              <p class="tell">Past a point the agent stops making progress and starts flailing: repeating tool calls, re-reading the same files, looping.</p>
+              <p class="eg">Step 22 onward is the same failed action with new phrasing.</p>
+              <span class="fixtag"><b>Fix:</b> detect early, abort, retry</span>
+            </article>
+          </div>
+        </div>
+
+        <!-- Group 3 -->
+        <div class="group reveal">
+          <div class="group-head"><span class="group-num">Group 03</span><h3>Why you only find out at altitude</h3></div>
+          <p class="group-sub">Reasons the failure stays invisible — on the benchmark and in the harness — until it's expensive.</p>
+          <div class="cards">
+            <article class="card">
+              <h4>Summit fever</h4>
+              <p class="tell">The cherry-picked demo run that worked becomes the mental model of the system, and nobody counts the runs that didn't.</p>
+              <p class="eg">The launch video is real; it's also the 1-in-8 take.</p>
+              <span class="fixtag"><b>Fix:</b> many runs, random seeds</span>
+            </article>
+            <article class="card">
+              <h4>Non-determinism</h4>
+              <p class="tell">Temperature, tool-call ordering, and async races mean the same input gives different runs, so the "number" isn't reproducible.</p>
+              <p class="eg">Today's 74% is tomorrow's 68% with no code change.</p>
+              <span class="fixtag"><b>Fix:</b> pin, seed, repeat</span>
+            </article>
+            <article class="card">
+              <h4>Capability &ne; reliability</h4>
+              <p class="tell">A newer model lifts the ceiling (what's possible once) without lifting the floor (what's consistent). Teams ship the ceiling.</p>
+              <p class="eg">"It's smarter now" yet the all-runs success rate barely moved.</p>
+              <span class="fixtag"><b>Fix:</b> re-measure reliability</span>
+            </article>
+            <article class="card">
+              <h4>Environment confounds</h4>
+              <p class="tell">Flaky APIs, rate limits, and non-deterministic tools inject failures the agent didn't cause — yet they're invisible on a clean benchmark and fully visible in production.</p>
+              <p class="eg">The agent was fine; the third-party tool returned a 429 on step 14.</p>
+              <span class="fixtag"><b>Fix:</b> test with real infra + retries</span>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- THE DESCENT -->
+    <section id="descent" class="divider-soft">
+      <div class="wrap">
+        <div class="label reveal">The descent</div>
+        <h2 class="sec reveal">Six ways to get the agent home</h2>
+        <p class="lead prose reveal">You don't beat the death zone with a stronger climber. You beat it with discipline: honest measurement, shorter exposed stretches, and a plan for the way down.</p>
+
+        <div class="moves">
+          <article class="move reveal">
+            <h4>Report pass^k next to pass@k</h4>
+            <p>Show consistency beside coverage, at the <span class="mono">k</span> that matches your real call volume, and count every run, not the best demo take.</p>
+            <span class="targets">Catches: best-of-N glory, summit fever</span>
+          </article>
+          <article class="move reveal">
+            <h4>Measure long, repeat, and re-measure</h4>
+            <p>Evaluate on tasks the length of the real job (the time-horizon approach), run them many times, and re-run after every model, prompt, or tool change. Compounding only shows up when the climb is long enough to fall on.</p>
+            <span class="targets">Catches: short-hop tasks, non-determinism, capability &ne; reliability</span>
+          </article>
+          <article class="move reveal">
+            <h4>Report the curve, not a number</h4>
+            <p>Show success as a function of task length, plus the spread and the floor (p10, worst-of-N), never a lone mean. An agent you can ship is one whose <em>bad</em> day is acceptable.</p>
+            <span class="targets">Catches: the flattering average</span>
+          </article>
+          <article class="move reveal">
+            <h4>Decompose to shrink the horizon</h4>
+            <p>Break one long task into short, independently verifiable legs with checked handoffs. Cutting H from 30 steps into three verified stages of 10 turns one big multiplicative gamble into three small, contained ones.</p>
+            <span class="targets">Catches: multiplicative compounding</span>
+          </article>
+          <article class="move reveal">
+            <h4>Engineer recovery, not just capability</h4>
+            <p>Reliability is the harness's job: add verification gates between phases, re-anchor to the goal mid-run, and let the agent roll back a bad step. A climber who can self-arrest a slip beats a stronger one who can't.</p>
+            <span class="targets">Catches: drift without recovery</span>
+          </article>
+          <article class="move reveal">
+            <h4>Detect meltdown, set a turnaround rule</h4>
+            <p>Watch for doom-loop signatures (repeated calls, no state change) and, like a climber turning back at a fixed time, give the agent hard budgets and a stop condition so a lost run ends cleanly instead of acting on a corrupted state.</p>
+            <span class="targets">Catches: meltdown / doom loops</span>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- TURNAROUND RULES -->
+    <section id="cheatsheet" class="divider-soft">
+      <div class="wrap">
+        <div class="label reveal">Turnaround rules</div>
+        <h2 class="sec reveal">The one-screen cheat sheet</h2>
+        <p class="lead prose reveal">Pin it next to the demo you're about to mistake for a product.</p>
+        <div class="table-wrap reveal">
+          <table>
+            <thead>
+              <tr><th>What fooled you</th><th>First move that helps</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Best-of-N glory</td><td>Report pass^k beside pass@k, at your real k</td></tr>
+              <tr><td>Short-hop tasks</td><td>Evaluate on long, human-timed horizons</td></tr>
+              <tr><td>The flattering average</td><td>Report the curve + variance, not a point</td></tr>
+              <tr><td>Multiplicative compounding</td><td>Decompose into short, verified legs</td></tr>
+              <tr><td>Drift without recovery</td><td>Verification gates + rollback mid-run</td></tr>
+              <tr><td>Meltdown / doom loops</td><td>Detect the loop; turn around; retry</td></tr>
+              <tr><td>Summit fever</td><td>Many runs, random seeds, count the failures</td></tr>
+              <tr><td>Non-determinism</td><td>Pin and seed; repeat and average</td></tr>
+              <tr><td>Capability &ne; reliability</td><td>Re-measure the floor after every change</td></tr>
+              <tr><td>Environment confounds</td><td>Test with real infra; build retry + fallback layers</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SOURCES -->
+    <section id="sources" class="divider-soft">
+      <div class="wrap">
+        <div class="label reveal">Sources</div>
+        <h2 class="sec reveal">Read these four</h2>
+        <p class="lead prose reveal">One defines the horizon, one builds the reliability science, one is the cleanest practitioner explainer, and one is the benchmark that made the gap concrete. Every claim above traces back to these.</p>
+        <div class="refs">
+          <div class="ref reveal"><span class="yr">2025</span><span class="t">Measuring AI Ability to Complete Long Tasks</span><span class="d">METR. Introduces the task-completion time horizon and the ~7-month doubling trend; the 80% horizon runs several times shorter than the 50% one. (See also METR's Time Horizon 1.1 update, 2026.)</span><a href="https://arxiv.org/abs/2503.14499" target="_blank" rel="noopener">arxiv.org/abs/2503.14499</a></div>
+          <div class="ref reveal"><span class="yr">2026</span><span class="t">Beyond pass@1: A Reliability Science Framework for Long-Horizon LLM Agents</span><span class="d">Formalizes the reliability decay curve, variance amplification, and meltdown onset across 20k+ episodes; shows decay is super-linear and strongest models melt down most.</span><a href="https://arxiv.org/abs/2603.29231" target="_blank" rel="noopener">arxiv.org/abs/2603.29231</a></div>
+          <div class="ref reveal"><span class="yr">2025</span><span class="t">Demystifying Evals for AI Agents</span><span class="d">Anthropic. The clearest working explanation of pass@k vs pass^k, eval saturation, and why consistency is the metric for customer-facing agents.</span><a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents" target="_blank" rel="noopener">anthropic.com/engineering/demystifying-evals-for-ai-agents</a></div>
+          <div class="ref reveal"><span class="yr">2024</span><span class="t">&tau;-bench: A Benchmark for Tool-Agent-User Interaction</span><span class="d">Yao et al. The source of the 61% pass@1 to 25% pass^8 collapse on retail tasks; a benchmark designed to expose consistency, not just capability.</span><a href="https://arxiv.org/abs/2406.12045" target="_blank" rel="noopener">arxiv.org/abs/2406.12045</a></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p class="f-quote">Summiting is optional. Getting home is mandatory.</p>
+    <p class="f-meta">Written by <a href="https://www.linkedin.com/in/aadityapanchal" target="_blank" rel="noopener">Aditya Panchal</a> &nbsp;|&nbsp; <a href="../">More posts</a></p>
+    <p class="f-fine">Original writing and diagrams. Claims are sourced above. Your agent may still be on the descent.</p>
+  </footer>
+
+  <script>
+    (function () {
+      document.body.classList.add('has-js');
+
+      var root = document.documentElement;
+      var saved = null;
+      try { saved = localStorage.getItem('judge-theme'); } catch (e) {}
+      if (saved) {
+        root.setAttribute('data-theme', saved);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        root.setAttribute('data-theme', 'dark');
+      }
+      var btn = document.getElementById('themeBtn');
+      if (btn) {
+        btn.addEventListener('click', function () {
+          var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+          root.setAttribute('data-theme', next);
+          try { localStorage.setItem('judge-theme', next); } catch (e) {}
+        });
+      }
+
+      var bar = document.getElementById('progress');
+      function onScroll() {
+        var h = document.documentElement;
+        var max = h.scrollHeight - h.clientHeight;
+        var pct = max > 0 ? (h.scrollTop / max) * 100 : 0;
+        if (bar) bar.style.width = pct + '%';
+      }
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+
+      var reveal = document.querySelectorAll('.reveal');
+      if ('IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+          });
+        }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+        reveal.forEach(function (el) { io.observe(el); });
+      } else {
+        reveal.forEach(function (el) { el.classList.add('in'); });
+      }
+
+      var navMap = {};
+      document.querySelectorAll('.nav-links a').forEach(function (a) {
+        var id = a.getAttribute('href');
+        if (id && id.indexOf('#') === 0) navMap[id.slice(1)] = a;
+      });
+      var sections = document.querySelectorAll('main section[id]');
+      if ('IntersectionObserver' in window) {
+        var spy = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) {
+              Object.keys(navMap).forEach(function (k) { navMap[k].classList.remove('active'); });
+              if (navMap[en.target.id]) navMap[en.target.id].classList.add('active');
+            }
+          });
+        }, { threshold: 0.4, rootMargin: '-20% 0px -60% 0px' });
+        sections.forEach(function (s) { spy.observe(s); });
+      }
+    })();
+  </script>
+</body>
+</html>

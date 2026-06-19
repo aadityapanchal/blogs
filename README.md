@@ -20,6 +20,8 @@ GitHub Pages serves from the repo root, so every folder with an `index.html` is 
 
 ## Posts
 
+- **Death by a Thousand Steps: Capability vs. Reliability in Agentic Systems** -> [`agent-reliability/`](agent-reliability/)
+  Why a benchmark number (capability) lies about production (reliability): pass@k vs. pass^k, the compounding-error decay curve, and the moves that get an agent home.
 - **Judging the Agent: LLM-as-a-Judge Bias in Agentic Systems** -> [`llm-judge-bias/`](llm-judge-bias/)
   Why LLM judges that grade agentic systems are biased, where the agent setting makes it worse, and the moves that fix it.
 
